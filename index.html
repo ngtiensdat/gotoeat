@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký lịch đi ăn</title>
+    <script type="module">
+        // Import Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { getDatabase, ref, set, push, get, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDJeuPkRKqIYMG2-9DbuElOnY71eN4ys48",
+            authDomain: "dangkytinchi-14f7c.firebaseapp.com",
+            databaseURL: "https://dangkytinchi-14f7c-default-rtdb.firebaseio.com",
+            projectId: "dangkytinchi-14f7c",
+            storageBucket: "dangkytinchi-14f7c.appspot.com",
+            messagingSenderId: "890452304340",
+            appId: "1:890452304340:web:7609ab8dcb8a7766a97641"
+        };
+    
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+    
+        // Đăng nhập bằng Firebase Authentication
+        window.login = async function () {
+            const email = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+    
+            if (!email || !password) {
+                alert("Vui lòng nhập email và mật khẩu!");
+                return;
+            }
+    
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                document.getElementById("loginForm").style.display = "none";
+                document.getElementById("mainContent").style.display = "block";
+                loadList();
+            } catch (error) {
+                alert("Lỗi đăng nhập: " + error.message);
+            }
+        };
+    
+        // Kiểm tra trạng thái đăng nhập
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById("loginForm").style.display = "none";
+                document.getElementById("mainContent").style.display = "block";
+                loadList();
+            } else {
+                document.getElementById("loginForm").style.display = "block";
+                document.getElementById("mainContent").style.display = "none";
+            }
+        });
+    
+        // Đăng xuất
+        window.logout = async function () {
+    try {
+        await signOut(auth);
+        document.getElementById("mainContent").style.display = "none";
+        document.getElementById("loginForm").style.display = "block";
+        alert("Bạn đã đăng xuất thành công!");
+    } catch (error) {
+        alert("Lỗi khi đăng xuất: " + error.message);
+    }
+};
+
+    
+        // Đăng ký lịch đi ăn
+        window.registerMeal = async function () {
+            const date = document.getElementById("date").value;
+            const time = document.getElementById("time").value;
+            const user = auth.currentUser;
+    
+            if (!user || !date || !time) {
+                alert("Vui lòng nhập đầy đủ thông tin!");
+                return;
+            }
+    
+            const newEntryRef = push(ref(database, "meals"));
+            await set(newEntryRef, {
+                name: user.email,
+                date,
+                time,
+                id: newEntryRef.key
+            });
+    
+            loadList();
+        };
+    
+        // Tải danh sách đăng ký
+        window.loadList = async function () {
+            const mealsRef = ref(database, "meals");
+            const snapshot = await get(mealsRef);
+            const list = document.getElementById("list");
+            list.innerHTML = "";
+    
+            if (snapshot.exists()) {
+                snapshot.forEach(child => {
+                    const data = child.val();
+                    const deleteBtn = data.name === auth.currentUser.email ? `<button onclick="deleteEntry('${data.id}')">Xóa</button>` : "";
+                    list.innerHTML += `<tr><td>${data.name}</td><td>${data.date}</td><td>${data.time}</td><td>${deleteBtn}</td></tr>`;
+                });
+            }
+        };
+        window.filterConflicts = async function () {
+    const mealsRef = ref(database, "meals");
+    const snapshot = await get(mealsRef);
+    
+    if (!snapshot.exists()) return;
+
+    const meals = {};
+    snapshot.forEach(child => {
+        const data = child.val();
+        const key = `${data.date}-${data.time}`;
+        if (!meals[key]) meals[key] = [];
+        meals[key].push(data);
+    });
+
+    let conflictList = Object.values(meals).filter(group => group.length > 1);
+
+    if (conflictList.length === 0) {
+        alert("Không có lịch trùng giờ.");
+        return;
+    }
+
+    let message = "Các lịch trùng giờ:\n";
+    conflictList.forEach(group => {
+        message += `Ngày: ${group[0].date}, Giờ: ${group[0].time}\n`;
+        group.forEach(entry => {
+            message += ` - ${entry.name}\n`;
+        });
+    });
+
+    alert(message);
+};
+
+        // Xóa lịch
+        window.deleteEntry = async function (id) {
+            await remove(ref(database, "meals/" + id));
+            loadList();
+        };
+    </script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        input, button { margin: 5px; padding: 8px; border-radius: 5px; }
+        button { cursor: pointer; border: none; }
+        #loginBtn { background-color: #17a2b8; color: white; }
+        #registerBtn { background-color: #28a745; color: white; }
+        #filterBtn { background-color: #007bff; color: white; }
+        #deleteBtn { background-color: #dc3545; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th, td { border: 1px solid black; padding: 8px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+    </style>
+</head>
+<body>
+    <div id="loginForm">
+        <h2>Đăng nhập</h2>
+        <input type="text" id="username" placeholder="Nhập tên của bạn">
+        <input type="password" id="password" placeholder="Nhập mật khẩu">
+        <button id="loginBtn" onclick="login()">Đăng nhập</button>
+        <button id="logoutBtn" onclick="logout()" style="background-color: #dc3545; color: white;">Đăng xuất</button>
+
+    </div>
+    
+    <div id="mainContent" style="display: none;">
+        <h2>Đăng ký lịch đi ăn</h2>
+        <button id="logoutBtn" onclick="logout()" style="background-color: #dc3545; color: white;">Đăng xuất</button>
+        <br><br>
+        <input type="date" id="date">
+        <input type="time" id="time">
+        <button id="registerBtn" onclick="registerMeal()">Thêm</button>
+        <button id="filterBtn" onclick="filterConflicts()">Lọc giờ trùng</button>
+    
+        <h3>Danh sách đăng ký</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Họ và Tên</th>
+                    <th>Ngày</th>
+                    <th>Giờ</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="list"></tbody>
+        </table>
+    </div>
+    
+</body>
+</html>
