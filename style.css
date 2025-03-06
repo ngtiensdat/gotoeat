@@ -1,0 +1,31 @@
+#loginForm {
+    width: 350px;
+    padding: 20px;
+    text-align: center;
+    background: url('friend.jpg') no-repeat center center;
+    background-size: cover;
+    color: rgb(10, 23, 107); /* Chữ màu trắng để dễ nhìn */
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Để tạo lớp phủ giúp chữ dễ đọc hơn */
+#loginForm::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* Lớp phủ tối */
+    z-index: -1;
+}
+
+/* Căn giữa form trên màn hình */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+}
